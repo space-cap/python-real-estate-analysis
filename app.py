@@ -173,32 +173,39 @@ def main():
         
         major_cities = ['전국', '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종']
         
-        city_dfs = []
-        for city in major_cities:
-            temp_df, latest_col, past_col = process_growth_data(df, [city], "전국")
-            if not temp_df.empty:
-                city_dfs.append(temp_df.iloc[0:1]) 
-                
-        if city_dfs:
-            result_df = pd.concat(city_dfs).sort_values(by='상승률', ascending=False)
+        # 🌟 [핵심 버그 픽스] '해운대구' 방지! 정확히 이름이 일치하는 도시만 골라옵니다.
+        df_filtered = df[df['지역명'].isin(major_cities)].copy()
+        df_filtered = df_filtered.drop_duplicates(subset=['지역명'], keep='first')
+        
+        if not df_filtered.empty:
+            # 날짜 컬럼 및 상승률 계산
+            date_columns = [col for col in df.columns if col != '지역명']
+            latest_col = date_columns[-1]
+            past_col = date_columns[-13]
+            
+            latest_p = pd.to_numeric(df_filtered[latest_col], errors='coerce')
+            past_p = pd.to_numeric(df_filtered[past_col], errors='coerce')
+            df_filtered['상승률'] = ((latest_p - past_p) / past_p) * 100
+            
+            # 결과 정렬
+            result_df = df_filtered.dropna(subset=['상승률']).sort_values(by='상승률', ascending=False)
             st.caption(f"분석 기간: {past_col} ~ {latest_col}")
             
+            # 차트 그리기
             fig, ax = plt.subplots(figsize=(12, 6))
-            
             colors = ['#d62728' if x > 0 else '#1f77b4' for x in result_df['상승률']]
             
             sns.barplot(data=result_df, x='지역명', y='상승률', hue='지역명', palette=colors, legend=False, ax=ax)
             ax.set_ylabel('상승률 (%)')
             ax.set_xlabel('')
             
-            # 🌟 [버그 픽스] X축 라벨 겹침 현상 해결
-            ax.axhline(0, color='black', linewidth=1.5)     # 1. 0% 위치에 진한 기준선을 하나 그립니다.
-            ax.spines['bottom'].set_position(('axes', 0))   # 2. X축(지역명)을 0선에서 분리하여 차트 맨 아래 바닥으로 내립니다.
+            # X축 라벨 겹침 방지 (0선 기준선 그리기)
+            ax.axhline(0, color='black', linewidth=1.5)
+            ax.spines['bottom'].set_position(('axes', 0))
             
             # 수치 표시
             for p in ax.patches:
                 height = p.get_height()
-                # 0을 기준으로 글씨 위치 조정
                 y_pos = height + 0.5 if height > 0 else height - 0.5
                 ax.text(p.get_x() + p.get_width()/2., y_pos, f'{height:.1f}%', ha='center', va='bottom' if height > 0 else 'top')
 
