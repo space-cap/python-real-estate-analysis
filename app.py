@@ -23,18 +23,26 @@ sns.set_theme(style="whitegrid", font="Malgun Gothic", font_scale=1) # seaborn �
 # 3. 데이터 로드 및 전처리 함수 (캐싱 적용)
 # -----------------------------------------------------------------------------
 @st.cache_data
+@st.cache_data
 def load_data():
     """엑셀 파일을 읽고 필요한 기본 전처리를 수행합니다."""
-    # 실제 환경에서는 파일 경로를 맞춰주세요. (예: './data/apt_price_index.xlsx')
-    file_path = 'data/apt_price_20260408.xlsx'
+    file_path = 'data/apt_price_20260408.xlsx' 
     
     try:
+        # 💡 포인트 1: header=10을 0으로 바꿔보거나, 파일에 맞게 조절해야 할 수 있습니다.
+        # 일단 가장 일반적인 header=10으로 두되, 안 맞으면 화면을 보고 고칠 겁니다.
         df = pd.read_excel(file_path, header=10)
     except FileNotFoundError:
         st.error(f"데이터 파일을 찾을 수 없습니다: {file_path}")
         st.stop()
         
-    df.rename(columns={'지 역': '지역명'}, inplace=True)
+    # 💡 포인트 2: 무조건 첫 번째 컬럼(인덱스 0)을 '지역명'으로 강제 변경합니다.
+    first_column_name = df.columns[0]
+    df.rename(columns={first_column_name: '지역명'}, inplace=True)
+
+    # 🌟 [추가된 코드] 지역명 앞뒤에 숨은 띄어쓰기(공백)를 모두 제거하여 깨끗하게 만듭니다.
+    df['지역명'] = df['지역명'].astype(str).str.strip()
+    
     return df
 
 @st.cache_data
@@ -75,6 +83,10 @@ def main():
 
     # --- 데이터 로드 ---
     df = load_data()
+
+    # 🚨 [디버깅용 화면 출력] 파이썬이 읽어들인 표의 상위 3줄을 대시보드에 그대로 보여줍니다.
+    # st.warning("🔍 [데이터 확인용] 첫 번째 컬럼이 정상적으로 '지역명'으로 바뀌었는지, 아래 표를 확인해주세요!")
+    # st.dataframe(df.head(3))
 
     # --- 사이드바 영역 (필터 컨트롤) ---
     with st.sidebar:
@@ -161,12 +173,11 @@ def main():
         
         major_cities = ['전국', '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종']
         
-        # process_growth_data 함수 내부에서 정확히 일치하는 단어만 찾도록 로직이 되어있으므로 개별 검색 필요
         city_dfs = []
         for city in major_cities:
             temp_df, latest_col, past_col = process_growth_data(df, [city], "전국")
             if not temp_df.empty:
-                city_dfs.append(temp_df.iloc[0:1]) # 첫번째 행만 가져옴
+                city_dfs.append(temp_df.iloc[0:1]) 
                 
         if city_dfs:
             result_df = pd.concat(city_dfs).sort_values(by='상승률', ascending=False)
@@ -174,18 +185,21 @@ def main():
             
             fig, ax = plt.subplots(figsize=(12, 6))
             
-            # 상승(양수)과 하락(음수) 색상 구분
             colors = ['#d62728' if x > 0 else '#1f77b4' for x in result_df['상승률']]
             
             sns.barplot(data=result_df, x='지역명', y='상승률', hue='지역명', palette=colors, legend=False, ax=ax)
             ax.set_ylabel('상승률 (%)')
             ax.set_xlabel('')
             
+            # 🌟 [버그 픽스] X축 라벨 겹침 현상 해결
+            ax.axhline(0, color='black', linewidth=1.5)     # 1. 0% 위치에 진한 기준선을 하나 그립니다.
+            ax.spines['bottom'].set_position(('axes', 0))   # 2. X축(지역명)을 0선에서 분리하여 차트 맨 아래 바닥으로 내립니다.
+            
             # 수치 표시
             for p in ax.patches:
                 height = p.get_height()
                 # 0을 기준으로 글씨 위치 조정
-                y_pos = height + 0.2 if height > 0 else height - 0.5
+                y_pos = height + 0.5 if height > 0 else height - 0.5
                 ax.text(p.get_x() + p.get_width()/2., y_pos, f'{height:.1f}%', ha='center', va='bottom' if height > 0 else 'top')
 
             st.pyplot(fig)
