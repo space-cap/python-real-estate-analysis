@@ -21,7 +21,7 @@ def load_data_to_oracle():
         print(f"❌ 파일을 찾을 수 없습니다: {file_path}")
         return
 
-    # 🌟 핵심 해결 1: pandas가 멋대로 바꾼 날짜 객체를 모두 '문자열(String)'로 강제 변환
+    # 날짜 컬럼 이름이 datetime 객체로 인식되는 것을 막기 위해 모두 문자로 변환
     df.columns = df.columns.astype(str)
 
     # 지역명 컬럼 전처리
@@ -45,7 +45,6 @@ def load_data_to_oracle():
         
         for region in unique_regions:
             try:
-                # 🌟 핵심 해결 2: 위치(:1) 대신 이름(:region_name) 기반 바인딩으로 변경
                 cursor.execute("""
                     INSERT INTO TB_REGION (REGION_NAME) 
                     SELECT :region_name FROM DUAL 
@@ -61,13 +60,16 @@ def load_data_to_oracle():
         region_map = {row[1]: row[0] for row in cursor.fetchall()}
 
         # --- 4. 매매가격지수 (TB_APT_PRICE_INDEX) 데이터 삽입 ---
-        # (앞서 df.columns를 문자열로 바꿨기 때문에 startswith가 에러 없이 잘 작동합니다)
         date_cols = [col for col in df.columns if col != 'REGION_NAME' and not col.startswith('Unnamed')]
         df_melted = pd.melt(df, id_vars=['REGION_NAME'], value_vars=date_cols, var_name='BASE_DATE', value_name='INDEX_VALUE')
         
+        # 🌟 핵심 버그 픽스: 고창군 등에 있는 '-' 같은 문자를 만나면 에러 대신 빈칸(NaN)으로 변환!
+        df_melted['INDEX_VALUE'] = pd.to_numeric(df_melted['INDEX_VALUE'], errors='coerce')
+        
+        # 그 다음, 숫자가 아닌 값이 들어있어 빈칸(NaN)이 된 행을 안전하게 삭제합니다.
         df_melted = df_melted.dropna(subset=['INDEX_VALUE'])
         
-        # 엑셀의 '2016-03-01 00:00:00' 형태에서 깔끔하게 '201603'만 추출
+        # 날짜 포맷팅 변환 (YYYY-MM-DD -> YYYYMM)
         df_melted['BASE_YYYYMM'] = df_melted['BASE_DATE'].astype(str).str.replace('-', '').str[:6]
         
         insert_data = []
@@ -80,7 +82,7 @@ def load_data_to_oracle():
                     float(row['INDEX_VALUE'])
                 ))
         
-        print(f"📈 총 {len(insert_data)}건의 지수 데이터 적재 중... 잠시만 기다려주세요.")
+        print(f"📈 총 {len(insert_data)}건의 지수 데이터 정제 완료. DB에 적재 중... 잠시만 기다려주세요.")
         
         cursor.executemany("""
             INSERT INTO TB_APT_PRICE_INDEX (REGION_ID, BASE_YYYYMM, INDEX_VALUE)
