@@ -48,7 +48,10 @@ def load_data_to_oracle():
                 full_region_names.append(f"{current_sido} {region}")
             else:
                 full_region_names.append(region)
-                
+    
+    # 🌟 추가된 코드: 넓어진 데이터프레임의 메모리 조각(파편화)을 한 번 깔끔하게 모아줍니다.
+    df = df.copy()
+    
     # 새로 만든 고유한 지역명을 REGION_NAME 컬럼으로 확정
     df['REGION_NAME'] = full_region_names
 
