@@ -51,7 +51,7 @@ def load_data_to_oracle():
     
     # 🌟 추가된 코드: 넓어진 데이터프레임의 메모리 조각(파편화)을 한 번 깔끔하게 모아줍니다.
     df = df.copy()
-    
+
     # 새로 만든 고유한 지역명을 REGION_NAME 컬럼으로 확정
     df['REGION_NAME'] = full_region_names
 
@@ -65,6 +65,9 @@ def load_data_to_oracle():
         print("✅ 오라클 클라우드 DB 접속 성공 (보안 적용 완료)!")
         
         cursor = connection.cursor()
+
+        # 🌟 핵심 해결책: 오라클의 병렬 처리(우르르 몰려가기)를 끄고 차분하게 하나씩 넣도록 지시!
+        cursor.execute("ALTER SESSION DISABLE PARALLEL DML")
         
         # --- 3. 지역 마스터 (TB_REGION) 데이터 삽입 ---
         unique_regions = df['REGION_NAME'].dropna().unique()
