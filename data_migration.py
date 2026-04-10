@@ -82,8 +82,13 @@ def load_data_to_oracle():
                     float(row['INDEX_VALUE'])
                 ))
         
-        print(f"📈 총 {len(insert_data)}건의 지수 데이터 정제 완료. DB에 적재 중... 잠시만 기다려주세요.")
+        print(f"📈 총 {len(insert_data)}건의 지수 데이터 정제 완료.")
         
+        # 🌟 새로 추가된 부분: 기존에 들어가 있던 지수 데이터를 깔끔하게 지워줍니다.
+        print("🧹 꼬여있는 기존 데이터를 안전하게 초기화(삭제)합니다...")
+        cursor.execute("DELETE FROM TB_APT_PRICE_INDEX")
+        
+        print("DB에 새 데이터 적재 중... 잠시만 기다려주세요.")
         cursor.executemany("""
             INSERT INTO TB_APT_PRICE_INDEX (REGION_ID, BASE_YYYYMM, INDEX_VALUE)
             VALUES (:1, :2, :3)
