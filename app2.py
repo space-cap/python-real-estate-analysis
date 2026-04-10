@@ -103,7 +103,7 @@ if selected_menu == "🌐 종합 시장 동향 분석":
         y=alt.Y('매매가격지수:Q', scale=alt.Scale(zero=False), title='매매가격지수'),
         color=alt.Color('지역명:N', legend=alt.Legend(title="지역구분", orient="top")),
         tooltip=['연월:T', '지역명:N', alt.Tooltip('매매가격지수:Q', format='.2f')]
-    ).properties(height=450).interactive()
+    ).properties(height=450)
     
     st.altair_chart(macro_chart, use_container_width=True)
     
@@ -168,15 +168,15 @@ elif selected_menu == "🔍 맞춤형 관심 지역 분석":
             y=alt.Y('매매가격지수:Q', scale=alt.Scale(zero=False)),
             color=alt.Color('지역명:N'),
             tooltip=['연월:T', '지역명:N', alt.Tooltip('매매가격지수:Q', format='.2f')]
-        ).properties(height=450).interactive()
+        ).properties(height=450)
         
         st.altair_chart(custom_chart, use_container_width=True)
 
         with st.expander("📝 선택한 지역 시계열 데이터 표 확인 (클릭하여 열기)"):
             pivot_df = filtered_df.pivot_table(index='연월', columns='지역명', values='매매가격지수', aggfunc='mean')
             st.dataframe(
-                pivot_df.style.highlight_max(axis=1, color='rgba(239, 68, 68, 0.4)')
-                              .highlight_min(axis=1, color='rgba(59, 130, 246, 0.4)'), 
+                pivot_df.style.highlight_max(axis=0, color='rgba(239, 68, 68, 0.4)')
+                              .highlight_min(axis=0, color='rgba(59, 130, 246, 0.4)'), 
                 use_container_width=True,
                 height=400
             )
