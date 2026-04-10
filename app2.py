@@ -160,10 +160,13 @@ elif selected_menu == "🔍 맞춤형 관심 지역 분석":
             (df_long['연월'] <= end_m)
         ]
         
+        # 중복 데이터(예: 서울 '중구', 부산 '중구' 등 이름이 같은 지역)를 평균값으로 병합하여 지그재그 차트 방지
+        plot_df = filtered_df.groupby(['연월', '지역명'])['매매가격지수'].mean().reset_index()
+        
         st.divider()
         st.markdown(f"### 📈 선택 지역 비교 : {start_m} ~ {end_m}")
         
-        custom_chart = alt.Chart(filtered_df).mark_line(size=2.5, point=True).encode(
+        custom_chart = alt.Chart(plot_df).mark_line(size=2.5, point=True).encode(
             x=alt.X('연월:T', title=''),
             y=alt.Y('매매가격지수:Q', scale=alt.Scale(zero=False)),
             color=alt.Color('지역명:N'),
